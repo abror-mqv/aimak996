@@ -6,7 +6,6 @@ import 'package:nookat996/features/about/about_screen.dart';
 import 'package:nookat996/features/about/feedback_screen.dart';
 import 'package:nookat996/features/about/developer_screen.dart';
 import 'package:nookat996/features/district/district_screen.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:nookat996/core/widgets/theme_toggle_button.dart';
@@ -20,6 +19,7 @@ import 'package:nookat996/core/providers/category_provider.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:nookat996/core/providers/contact_info_provider.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:nookat996/core/utils/whatsapp_launcher.dart';
 
 class AppDrawer extends StatefulWidget {
   final bool isDark;
@@ -322,48 +322,7 @@ class _AppDrawerState extends State<AppDrawer>
     String message,
   ) async {
     try {
-      // Normalize: keep digits and '+', drop '+', convert leading 0 -> 996
-      final cleaned = number.replaceAll(RegExp(r'[^0-9+]'), '');
-      String phone = cleaned;
-      if (phone.startsWith('+')) phone = phone.substring(1);
-      if (phone.startsWith('0')) phone = '996${phone.substring(1)}';
-
-      final schemeUri = Uri.parse(
-          'whatsapp://send?phone=$phone&text=${Uri.encodeComponent(message)}');
-      final hasScheme = await canLaunchUrl(schemeUri);
-      if (hasScheme) {
-        final launched = await launchUrl(
-          schemeUri,
-          mode: LaunchMode.externalApplication,
-        );
-        if (!launched) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('whatsapp_error'.tr())),
-          );
-        }
-        return;
-      }
-
-      // Fallback to web
-      final webUri = Uri.parse(
-          'https://wa.me/$phone?text=${Uri.encodeComponent(message)}');
-      final hasWeb = await canLaunchUrl(webUri);
-      if (hasWeb) {
-        final launched = await launchUrl(
-          webUri,
-          mode: LaunchMode.externalApplication,
-        );
-        if (!launched) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('whatsapp_error'.tr())),
-          );
-        }
-        return;
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('whatsapp_error'.tr())),
-      );
+      await WhatsAppLauncher.launch(context, phone: number, message: message);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('whatsapp_error'.tr())),

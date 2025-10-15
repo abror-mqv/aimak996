@@ -25,6 +25,7 @@ import 'package:nookat996/core/providers/contact_info_provider.dart';
 import 'package:nookat996/core/widgets/pinned_message_box.dart';
 import 'package:nookat996/constants/app_colors.dart';
 import 'package:nookat996/core/models/contact_info.dart';
+import 'package:nookat996/core/utils/whatsapp_launcher.dart';
 
 class HomeScreen extends StatefulWidget {
   final bool isDark;
@@ -233,65 +234,9 @@ class _HomeScreenState extends State<HomeScreen>
     try {
       final contactProvider = context.read<ContactInfoProvider>();
       final rawPhone = contactProvider.moderatorPhone;
-      final message = contactProvider.uploadText; // draft text for upload
-      // Normalize phone: keep digits and '+', then remove '+', map leading 0 -> 996 (KG)
-      final cleaned = rawPhone.replaceAll(RegExp(r'[^0-9+]'), '');
-      String phone = cleaned;
-      if (phone.startsWith('+')) phone = phone.substring(1);
-      if (phone.startsWith('0')) phone = '996${phone.substring(1)}';
-      final uri = Uri.parse(
-          'whatsapp://send?phone=$phone&text=${Uri.encodeComponent(message)}');
-
-      debugPrint('[WhatsApp] Attempting to launch');
-      debugPrint('[WhatsApp] rawPhone: "$rawPhone"');
-      debugPrint('[WhatsApp] cleaned: "$cleaned"');
-      debugPrint('[WhatsApp] normalized (E.164 no plus): "$phone"');
-      debugPrint('[WhatsApp] uri: $uri');
-
-      final canLaunch = await canLaunchUrl(uri);
-      debugPrint('[WhatsApp] canLaunchUrl: $canLaunch');
-
-      if (canLaunch) {
-        final launched = await launchUrl(
-          uri,
-          mode: LaunchMode.externalApplication,
-        );
-        debugPrint('[WhatsApp] launchUrl result: $launched');
-        if (!launched && mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Не удалось открыть WhatsApp')),
-          );
-        }
-      } else {
-        // Fallback to wa.me link for cases when the scheme is not handled
-        final webUri = Uri.parse(
-            'https://wa.me/$phone?text=${Uri.encodeComponent(message)}');
-        debugPrint(
-            '[WhatsApp] Scheme not available. Trying web fallback: $webUri');
-        final canLaunchWeb = await canLaunchUrl(webUri);
-        debugPrint('[WhatsApp] canLaunchUrl (web): $canLaunchWeb');
-        if (canLaunchWeb) {
-          final launched = await launchUrl(
-            webUri,
-            mode: LaunchMode.externalApplication,
-          );
-          debugPrint('[WhatsApp] web launch result: $launched');
-          if (!launched && mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                  content: Text('Не удалось открыть WhatsApp через браузер')),
-            );
-          }
-        } else if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('WhatsApp не установлен или недоступен')),
-          );
-        }
-      }
-    } catch (e, st) {
-      debugPrint('[WhatsApp] Exception: $e');
-      debugPrint('[WhatsApp] StackTrace: $st');
+      final message = contactProvider.uploadText;
+      await WhatsAppLauncher.launch(context, phone: rawPhone, message: message);
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Ошибка при открытии WhatsApp: $e')),
